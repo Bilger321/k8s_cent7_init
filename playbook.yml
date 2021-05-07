@@ -27,7 +27,6 @@
         repo_gpgcheck=1
         gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
 
-# Install required packages.
   - name: install kubestuff
     yum:
       name:
@@ -41,13 +40,11 @@
         - kubectl
     become: yes
 
-# Disable SEL
   - name: Put SELinux in permissive mode, logging actions that would be blocked.
     selinux:
       policy: targeted
       state: permissive
 
-# Turn off swap.
   - name: Turn off swap 
     replace:
       path: /etc/fstab
@@ -72,8 +69,6 @@
         net.bridge.bridge-nf-call-iptables = 1
         net.ipv4.ip_forward = 1
       
-
-# Install required packages.
   - name: install prereqs 
     yum:
       name:
@@ -87,7 +82,6 @@
       url: https://download.docker.com/linux/centos/docker-ce.repo
       dest: /etc/yum.repos.d/docker-ce.repo
 
-# Install required packages.
   - name: install docker stuff
     yum:
       name:
@@ -120,6 +114,7 @@
            "overlay2.override_kernel_check=true"
          ]
        }
+
   - name: restart service docker, also issue daemon-reload to pick up config changes
     systemd:
       state: restarted
@@ -150,6 +145,12 @@
       - 4789/udp
       - 8285/udp
       - 8472/udp
+
+  - name: enable kubelet
+    systemd:
+      name: kubelet
+      state: started
+      enabled: True
 
 - name: setup master node
   hosts: master
