@@ -1,5 +1,5 @@
 ---
-- name: setup node
+- name: setup all nodes
   hosts: all
   tasks:
 
@@ -105,28 +105,79 @@
 
   - name: Create daemon json config file
     blockinfile:
-      create: yes
-      path: /etc/docker/daemon.json
-      block: |
-        {
-          "exec-opts": ["native.cgroupdriver=systemd"],
-          "log-driver": "json-file",
-          "log-opts": {
-            "max-size": "100m"
-          },
-          "storage-driver": "overlay2",
-          "storage-opts": [
-            "overlay2.override_kernel_check=true"
-          ]
-        }
-  - name: restart service cron on centos, in all cases, also issue daemon-reload to pick up config changes
+     create: yes
+     path: /etc/docker/daemon.json
+     marker: ""
+     block: |
+       {
+         "exec-opts": ["native.cgroupdriver=systemd"],
+         "log-driver": "json-file",
+         "log-opts": {
+           "max-size": "100m"
+         },
+         "storage-driver": "overlay2",
+         "storage-opts": [
+           "overlay2.override_kernel_check=true"
+         ]
+       }
+  - name: restart service docker, also issue daemon-reload to pick up config changes
     systemd:
       state: restarted
       daemon_reload: yes
       name: docker
 
-  - name: restart service cron on centos, in all cases, also issue daemon-reload to pick up config changes
+  - name: enable docker
     systemd:
       name: docker
       state: started
       enabled: True
+
+- name: setup worker node
+  hosts: worker
+  tasks:
+
+  - name: opening tcp firewall ports
+    firewalld:
+      port: "{{ item }}" 
+      permanent: yes
+      state: enabled
+    loop:
+      - 10250/tcp
+      - 30000-32767/tcp
+      - 5473/tcp
+      - 179/tcp 
+      - 5473/tcp
+      - 4789/udp
+      - 8285/udp
+      - 8472/udp
+
+- name: setup master node
+  hosts: master
+  tasks:
+
+  - name: opening tcp firewall ports
+    firewalld:
+      port: "{{ item }}"
+      permanent: yes
+      state: enabled
+    loop: 
+      - 6443/tcp
+      - 2379-2380/tcp
+      - 10250/tcp
+      - 10251/tcp
+      - 10252/tcp
+      - 5473/tcp
+      - 179/tcp
+      - 5473/tcp
+      - 4789/udp
+      - 8285/udp
+      - 8472/udp
+
+  - name: enable kubelet
+    systemd:
+      name: kubelet
+      state: started
+      enabled: True
+
+  - name: pulling container images with kubeadm
+    command: kubeadm config images pull
